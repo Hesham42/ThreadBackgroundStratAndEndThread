@@ -3,13 +3,11 @@ package com.example.threadbackgroundstratandendthread.Serv;
 import android.app.Notification;
 import android.app.PendingIntent;
 import android.app.Service;
-import android.app.job.JobParameters;
-import android.app.job.JobService;
-import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.IBinder;
-import android.support.annotation.Nullable;
+import android.preference.PreferenceManager;
 import android.support.v4.app.NotificationCompat;
 import android.support.v4.app.NotificationManagerCompat;
 import android.util.Log;
@@ -18,6 +16,8 @@ import com.example.threadbackgroundstratandendthread.MainActivity;
 import com.example.threadbackgroundstratandendthread.Parsing.XMLParser;
 import com.example.threadbackgroundstratandendthread.R;
 
+import org.jetbrains.annotations.Nullable;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Timer;
@@ -25,7 +25,7 @@ import java.util.TimerTask;
 
 import static com.example.threadbackgroundstratandendthread.Serv.App.CHANEL_1_ID;
 
-public class ExampleJobService extends Service {
+public class SensorService extends Service {
     //app notifcation
     Intent activeIntent;
     PendingIntent pendingIntent;
@@ -36,84 +36,121 @@ public class ExampleJobService extends Service {
     static final String KEY_NAME = "name";
     static final String KEY_COST = "cost";
     static final String KEY_DESC = "description";
+    public boolean jobٍStart = false;
 
     private static final String TAG = "Guinness";
     XMLParser xmlParser;
     ArrayList<HashMap<String, String>> menuItems = new ArrayList<HashMap<String, String>>();
-
     public int counter=0;
     private Timer timer;
     private TimerTask timerTask;
-    long oldTime=0;
-
-    public ExampleJobService(Context applicationContext) {
+    SharedPreferences prefs;
+    public SensorService(Context applicationContext) {
         super();
         Log.i("HERE", "here I am!");
 
-
     }
 
-    public ExampleJobService() {
+    public SensorService() {
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         super.onStartCommand(intent, flags, startId);
+        prefs = PreferenceManager
+                .getDefaultSharedPreferences(getApplicationContext());
+        prefs = getSharedPreferences("ServiceRunning",MODE_PRIVATE);
+        jobٍStart = prefs.getBoolean("jobٍStart",false);
+        counter= prefs.getInt("counter", 0);
         startTimer();
         return START_STICKY;
-    }
+       }
 
     @Override
     public void onDestroy() {
         super.onDestroy();
         Log.i("EXIT", "ondestroy!");
-        Intent broadcastIntent = new Intent(this, MyBroadcastReceiver.class);
-        broadcastIntent.putExtra("Start","Start");
-        sendBroadcast(broadcastIntent);
-        stoptimertask();
+
+              JobServiceStart(jobٍStart);
+                Intent broadcastIntent = new Intent(this, MyBroadcastReceiver.class);
+                broadcastIntent.putExtra("Start",jobٍStart);
+                sendBroadcast(broadcastIntent);
+                stoptimertask();
+
+    }
+
+    public void JobServiceStart(boolean jobٍStart) {
+        try {
+            prefs = PreferenceManager
+                    .getDefaultSharedPreferences(getApplicationContext());
+            prefs= getSharedPreferences("ServiceRunning", MODE_PRIVATE);
+            SharedPreferences.Editor editor = prefs.edit();
+            editor.putInt("counter", counter);
+            editor.putBoolean("jobٍStart",jobٍStart);
+            editor.apply();
+            //Long.i("MoveMore", "Saving readings to preferences");
+        } catch (NullPointerException e) {
+            Log.e(TAG, "error saving: are you testing?" +e.getMessage());
+
+        }
+
     }
 
     public void startTimer() {
         //set a new Timer
+
         timer = new Timer();
 
         //initialize the TimerTask's job
         initializeTimerTask();
 
         //schedule the timer, to wake up every 1 second
-        timer.schedule(timerTask,1000 , 60000); //
+        timer.schedule(timerTask, 1000, 1000); //
     }
 
 
-    /**
-     * it sets the timer to print the counter every x seconds
-     */
     public void initializeTimerTask() {
         timerTask = new TimerTask() {
             public void run() {
-                xmlParser = new XMLParser();
-                menuItems = xmlParser.ParsingData();
-                NotificationMenuItem(menuItems, getApplicationContext());
+                Log.i("in timer", "in timer ++++  "+ (counter++));
+//                xmlParser = new XMLParser();
+//                menuItems = xmlParser.ParsingData();
+//                NotificationMenuItem(menuItems, getApplicationContext());
+
             }
         };
     }
-    /**
-     * not needed
-     */
+
+
     public void stoptimertask() {
         //stop the timer, if it's not already null
-        if (timer != null) {
-            timer.cancel();
-            timer = null;
-        }
-    }
+        try {
+            prefs = PreferenceManager
+                    .getDefaultSharedPreferences(getApplicationContext());
+            prefs= getSharedPreferences("ServiceRunning", MODE_PRIVATE);
+            SharedPreferences.Editor editor = prefs.edit();
+            editor.putInt("counter", counter);
+            editor.putBoolean("jobٍStart",jobٍStart);
+            editor.apply();
 
+
+            //Long.i("MoveMore", "Saving readings to preferences");
+        } catch (NullPointerException e) {
+            Log.e(TAG, "error saving: are you testing?" +e.getMessage());
+
+        }
+        if (timer != null) {
+                timer.cancel();
+                timer = null;
+            }
+
+    }
     @Nullable
     @Override
     public IBinder onBind(Intent intent) {
+
         return null;
     }
-
     private void NotificationMenuItem(ArrayList<HashMap<String, String>> menuItems , Context context) {
         Log.wtf(TAG,menuItems.toString());
         Intent activeIntent;
