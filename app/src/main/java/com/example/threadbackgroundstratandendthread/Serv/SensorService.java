@@ -41,14 +41,13 @@ public class SensorService extends Service {
     private static final String TAG = "Guinness";
     XMLParser xmlParser;
     ArrayList<HashMap<String, String>> menuItems = new ArrayList<HashMap<String, String>>();
-    public int counter=0;
+    public int counter = 0;
     private Timer timer;
     private TimerTask timerTask;
-    SharedPreferences prefs;
+
     public SensorService(Context applicationContext) {
         super();
         Log.i("HERE", "here I am!");
-
     }
 
     public SensorService() {
@@ -57,40 +56,48 @@ public class SensorService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         super.onStartCommand(intent, flags, startId);
-        prefs = PreferenceManager
-                .getDefaultSharedPreferences(getApplicationContext());
-        prefs = getSharedPreferences("ServiceRunning",MODE_PRIVATE);
-        jobٍStart = prefs.getBoolean("jobٍStart",false);
-        counter= prefs.getInt("counter", 0);
-        startTimer();
-        return START_STICKY;
-       }
+        if(isRadioRunning()){
+            GetDataService();
+            startTimer();
+            return START_STICKY;
+        }else {
+            stoptimertask();
+            return START_STICKY;
+        }
+
+    }
+
+    public void GetDataService() {
+        SharedPreferences sharedPref = this.getSharedPreferences("ServiceRunning", Context.MODE_PRIVATE);
+        jobٍStart = sharedPref.getBoolean("jobٍStart", false);
+        counter = sharedPref.getInt("counter", 0);
+
+    }
 
     @Override
     public void onDestroy() {
         super.onDestroy();
         Log.i("EXIT", "ondestroy!");
-
-              JobServiceStart(jobٍStart);
-                Intent broadcastIntent = new Intent(this, MyBroadcastReceiver.class);
-                broadcastIntent.putExtra("Start",jobٍStart);
-                sendBroadcast(broadcastIntent);
-                stoptimertask();
+        Log.i("ondestroy mSensorService.jobٍStart?",isRadioRunning() +"");
+        JobServiceStart(isRadioRunning());
+        Intent broadcastIntent = new Intent(this, MyBroadcastReceiver.class);
+        broadcastIntent.putExtra("Start", isRadioRunning());
+        sendBroadcast(broadcastIntent);
+        stoptimertask();
 
     }
 
-    public void JobServiceStart(boolean jobٍStart) {
+    public void JobServiceStart(boolean isRadioPlaying) {
         try {
-            prefs = PreferenceManager
-                    .getDefaultSharedPreferences(getApplicationContext());
-            prefs= getSharedPreferences("ServiceRunning", MODE_PRIVATE);
-            SharedPreferences.Editor editor = prefs.edit();
+            Log.i("JobServiceStart mSensorService.jobٍStart?",isRadioPlaying +"");
+
+            SharedPreferences sharedPref = this.getSharedPreferences("ServiceRunning", Context.MODE_PRIVATE);
+            SharedPreferences.Editor editor = sharedPref.edit();
+            editor.putBoolean("jobٍStart", isRadioPlaying);
             editor.putInt("counter", counter);
-            editor.putBoolean("jobٍStart",jobٍStart);
-            editor.apply();
-            //Long.i("MoveMore", "Saving readings to preferences");
+            editor.commit();
         } catch (NullPointerException e) {
-            Log.e(TAG, "error saving: are you testing?" +e.getMessage());
+            Log.e(TAG, "error saving: are you testing?" + e.getMessage());
 
         }
 
@@ -112,7 +119,7 @@ public class SensorService extends Service {
     public void initializeTimerTask() {
         timerTask = new TimerTask() {
             public void run() {
-                Log.i("in timer", "in timer ++++  "+ (counter++));
+                Log.i("in timer", "in timer ++++  " + (counter++));
 //                xmlParser = new XMLParser();
 //                menuItems = xmlParser.ParsingData();
 //                NotificationMenuItem(menuItems, getApplicationContext());
@@ -124,35 +131,27 @@ public class SensorService extends Service {
 
     public void stoptimertask() {
         //stop the timer, if it's not already null
-        try {
-            prefs = PreferenceManager
-                    .getDefaultSharedPreferences(getApplicationContext());
-            prefs= getSharedPreferences("ServiceRunning", MODE_PRIVATE);
-            SharedPreferences.Editor editor = prefs.edit();
-            editor.putInt("counter", counter);
-            editor.putBoolean("jobٍStart",jobٍStart);
-            editor.apply();
-
-
-            //Long.i("MoveMore", "Saving readings to preferences");
-        } catch (NullPointerException e) {
-            Log.e(TAG, "error saving: are you testing?" +e.getMessage());
-
-        }
         if (timer != null) {
-                timer.cancel();
-                timer = null;
-            }
+            timer.cancel();
+            timer = null;
+        }
 
     }
+
     @Nullable
     @Override
     public IBinder onBind(Intent intent) {
 
         return null;
     }
-    private void NotificationMenuItem(ArrayList<HashMap<String, String>> menuItems , Context context) {
-        Log.wtf(TAG,menuItems.toString());
+
+    private boolean isRadioRunning() {
+        SharedPreferences sharedPref = this.getSharedPreferences("ServiceRunning", Context.MODE_PRIVATE);
+        return sharedPref.getBoolean("jobٍStart", false);
+    }
+
+    private void NotificationMenuItem(ArrayList<HashMap<String, String>> menuItems, Context context) {
+        Log.wtf(TAG, menuItems.toString());
         Intent activeIntent;
         PendingIntent pendingIntent;
         Notification notification;
@@ -165,7 +164,7 @@ public class SensorService extends Service {
                 activeIntent,
                 0);
 
-        for (int i= 0; i<menuItems.size();i++){
+        for (int i = 0; i < menuItems.size(); i++) {
             notification = new
                     NotificationCompat.Builder(context, CHANEL_1_ID)
                     .setSmallIcon(R.drawable.notifaction_24dp)
